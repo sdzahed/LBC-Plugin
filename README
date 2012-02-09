@@ -1,0 +1,9 @@
+To create the lbc plugin use the following command:
+gcc -I`gcc -print-file-name=plugin`/include -fPIC -shared -O2 plugin_lbc.c -o plugin_lbc.so
+
+
+To create the static library use the following:
+gcc -I. -fPIC -shared -O2 zinit.c -o liblbc.so
+
+To compile the test programs use this:
+gcc -fplugin=../plugin-src/plugin_lbc.so hello.c -llbc -fdump-tree-all -L../liblbc/
