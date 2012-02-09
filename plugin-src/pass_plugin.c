@@ -1,0 +1,48 @@
+/* A trivial (dumb) plugin example that shows how to use the GCC plugin
+   mechanism.  */
+
+#include "gcc-plugin.h"
+#include <stdlib.h>
+#include "config.h"
+#include "system.h"
+#include "coretypes.h"
+#include "tree.h"
+#include "tree-pass.h"
+#include "intl.h"
+#include "toplev.h"
+#include "diagnostic.h"
+
+int plugin_is_GPL_compatible;
+
+void
+handle_new_passes (void *event_data, void *data)
+{
+  struct opt_pass *pass = (struct opt_pass *)event_data;
+  printf ("Executing pass = %s \n", pass->name);
+}
+
+/* Initialization function that GCC calls. This plugin takes an argument
+   that specifies the name of the reference pass and an instance number,
+   both of which determine where the plugin pass should be inserted.  */
+
+int
+plugin_init (struct plugin_name_args *plugin_info,
+             struct plugin_gcc_version *version)
+{
+  const char *plugin_name = plugin_info->base_name;
+  int argc = plugin_info->argc;
+  struct plugin_argument *argv = plugin_info->argv;
+  int i;
+
+  /* Process the plugin arguments. This plugin takes the following arguments:
+     ref-pass-name=<PASS_NAME> and ref-pass-instance-num=<NUM>.  */
+  for (i = 0; i < argc; ++i)
+    {
+        warning (0, G_("plugin %qs: argument %qs value %qs"),
+                 plugin_name, argv[i].key, argv[i].value);
+    }
+
+  register_callback (plugin_name, PLUGIN_PASS_EXECUTION, handle_new_passes, NULL);
+
+  return 0;
+}
