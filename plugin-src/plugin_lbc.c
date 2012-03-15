@@ -270,12 +270,6 @@ mf_make_builtin (enum tree_code category, const char *name, tree type)
 				   category, get_identifier (name), type));
   TREE_PUBLIC (decl) = 1;
   DECL_EXTERNAL (decl) = 1;
-  if (strcmp(name, "ensure_sframe_bitmap") == 0){
-      printf("Zahed pass 0: hmm lets see if it can be inlined\n");
-      DECL_DECLARED_INLINE_P (decl) = 1;
-      DECL_DISREGARD_INLINE_LIMITS (decl) = 1;
-      //debug_tree(decl);
-  }
   lang_hooks.decls.pushdecl (decl);
   /* The decl was declared by the compiler.  */
   DECL_ARTIFICIAL (decl) = 1;
