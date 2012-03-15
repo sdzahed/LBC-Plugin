@@ -3,6 +3,11 @@ cscope.in.out
 cscope.out
 cscope.po.out
 liblbc/liblbc.so
+liblbc/liblbc.a
 liblbc/liblbc.so.0
 plugin-src/plugin_lbc.so
 *.swp
+a.out
+*.o
+*.so
+*.bak

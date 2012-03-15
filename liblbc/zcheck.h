@@ -219,5 +219,6 @@ void is_char_red(unsigned int value,
 
 unsigned is_array_acc_unsafe(unsigned int index, unsigned int array_size);
 void ensure_addr_bitmap(void *addr_start, void *addr_end);
-void ensure_sframe_bitmap(void* frame_start, void* frame_end);
+//void ensure_sframe_bitmap(void* frame_start, void* frame_end);
+void ensure_sframe_bitmap(void);
 #endif
