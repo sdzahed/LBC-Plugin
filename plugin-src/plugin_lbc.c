@@ -1044,7 +1044,7 @@ calculate_zone_sizes(size_t element_size, size_t request_size, bool is_global, \
     }else if (is_global && is_complete){
         frontsz = LBC_GLOBAL_FRONT_RZ_SIZE;
         rearsz = MAX (0, (MAX (4 * element_size, request_size / 8) - frontsz));
-    }else if(is_complete){
+    }else if(!is_complete){
         frontsz = LBC_GLOBAL_FRONT_RZ_SIZE;
         rearsz = 0;
     }
