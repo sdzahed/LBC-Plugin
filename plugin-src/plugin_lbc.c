@@ -73,7 +73,7 @@ static tree mx_xfn_xform_decls (gimple_stmt_iterator *, bool *,
 				struct walk_stmt_info *);
 static gimple_seq mx_register_decls (tree, gimple_seq, gimple, location_t, bool);
 static unsigned int execute_mudflap_function_decls (void);
-static tree create_struct_type(tree decl);
+static tree create_struct_type(tree decl, size_t front_rz_size, size_t rear_rz_size);
 static tree mx_xform_instrument_pass2(tree temp);
 
 /* Helper method to build a string cst.
@@ -923,31 +923,43 @@ struct mf_xform_decls_data
 };
 
 static tree
-create_struct_type(tree decl)
+create_struct_type(tree decl, size_t front_rz_size, size_t rear_rz_size)
 {
+    // TODO make this dynamic rather than static
     char type_name[50];
-    tree array_idx =  build_index_type (size_int (2U)); // TODO the size needs to be computed on the fly. How?
-    tree rz_array = build_array_type (unsigned_type_node, array_idx);
+    tree fieldfront, orig_var, fieldrear, struct_type;
 
-    tree fieldfront = build_decl (UNKNOWN_LOCATION,
-            FIELD_DECL, get_identifier ("rz_front"), rz_array);
-    /* TODO we would need another one for orig_var? Question: how do we copy
-     *      decl and remove it from original location?
-     */
-    tree orig_var = build_decl (UNKNOWN_LOCATION,
-            FIELD_DECL, get_identifier("orig_var"), TREE_TYPE(decl));
-    tree fieldrear = build_decl (UNKNOWN_LOCATION,
-            FIELD_DECL, get_identifier ("rz_rear"), rz_array);
+    gcc_assert(front_rz_size % 8 == 0 && rear_rz_size % 8 == 0);
 
-    tree struct_type = mf_mark(make_node (RECORD_TYPE));
+    struct_type = mf_mark(make_node (RECORD_TYPE));
 
-    // TODO changes here. verify. orig_var needs to be inserted above.
+    // Build the front red zone
+    tree front_array_idx =  build_index_type (size_int (front_rz_size / sizeof(unsigned int)));
+    tree front_rz_array = build_array_type (unsigned_type_node, front_array_idx);
+    fieldfront = build_decl (UNKNOWN_LOCATION,
+            FIELD_DECL, get_identifier ("rz_front"), front_rz_array);
+    DECL_ALIGN(fieldfront) = 8;
     DECL_CONTEXT (fieldfront) = struct_type;
+
+    // orig variable
+    orig_var = build_decl (UNKNOWN_LOCATION,
+            FIELD_DECL, get_identifier("orig_var"), TREE_TYPE(decl));
     DECL_CONTEXT (orig_var) = struct_type; // Look at comments above
-    DECL_CONTEXT (fieldrear) = struct_type;
     DECL_CHAIN (fieldfront) = orig_var;
-    DECL_CHAIN (orig_var) = fieldrear;
+
+    // Rear zone
+    if (COMPLETE_TYPE_P(decl)){
+        tree rear_array_idx =  build_index_type (size_int (rear_rz_size / sizeof(unsigned int)));
+        tree rear_rz_array = build_array_type (unsigned_type_node, rear_array_idx);
+        fieldrear = build_decl (UNKNOWN_LOCATION,
+                FIELD_DECL, get_identifier ("rz_rear"), rear_rz_array);
+        DECL_ALIGN(fieldrear) = 8;
+        DECL_CONTEXT (fieldrear) = struct_type;
+        DECL_CHAIN (orig_var) = fieldrear;
+    }
+
     TYPE_FIELDS (struct_type) = fieldfront;
+
     strcpy(type_name, "rz_");
     strcat(type_name, get_name(decl));
     strcat(type_name, "_type");
@@ -1004,6 +1016,54 @@ mf_build_asm (char *asm_str, tree output, bool volatile_p)
     return stmt;
 }
 
+
+#define LBC_GLOBAL_FRONT_RZ_SIZE 128
+#define LBC_MIN_ZONE_SIZE 8
+#define LBC_MAX_ZONE_SIZE 1024
+
+#ifndef MAX
+#define MAX( a, b ) ( ((a) > (b)) ? (a) : (b) )
+#endif
+
+#ifndef MIN
+#define MIN( a, b ) ( ((a) < (b)) ? (a) : (b) )
+#endif
+
+#define ROUNDUP( a, b ) (!((a) % (b)) ? (a) : (a) + ((b) - ((a) % (b))))
+
+static void
+calculate_zone_sizes(size_t element_size, size_t request_size, bool is_global, \
+                    bool is_complete, size_t *fsize, size_t *rsize)
+{
+    size_t frontsz, rearsz;
+
+    // Step A
+    if (!is_global && is_complete){
+        frontsz = MAX (2 * element_size, request_size / 8);
+        rearsz = frontsz;
+    }else if (is_global && is_complete){
+        frontsz = LBC_GLOBAL_FRONT_RZ_SIZE;
+        rearsz = MAX (0, (MAX (4 * element_size, request_size / 8) - frontsz));
+    }else if(is_complete){
+        frontsz = LBC_GLOBAL_FRONT_RZ_SIZE;
+        rearsz = 0;
+    }
+
+
+    // Step B
+    frontsz = ROUNDUP(frontsz, 8);
+    frontsz = frontsz > LBC_MAX_ZONE_SIZE ? LBC_MAX_ZONE_SIZE : frontsz;
+    frontsz = frontsz < LBC_MIN_ZONE_SIZE ? LBC_MIN_ZONE_SIZE : frontsz;
+
+    rearsz = ROUNDUP(rearsz, 8);
+    rearsz = rearsz > LBC_MAX_ZONE_SIZE ? LBC_MAX_ZONE_SIZE : rearsz;
+    rearsz = rearsz < LBC_MIN_ZONE_SIZE ? LBC_MIN_ZONE_SIZE : rearsz;
+
+    // Return the result
+    *fsize = frontsz;
+    *rsize = rearsz;
+}
+
 /* Synthesize a CALL_EXPR and a TRY_FINALLY_EXPR, for this chain of
    _DECLs if appropriate.  Arrange to call the __mf_register function
    now, and the __mf_unregister function later for each.  Return the
@@ -1014,6 +1074,11 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
     gimple_seq finally_stmts = NULL;
     gimple_stmt_iterator initially_stmts = gsi_start (seq);
     bool sframe_inserted = false;
+    size_t front_rz_size, rear_rz_size;
+    tree fsize, rsize, size;
+    gimple uninit_fncall_front, uninit_fncall_rear, init_fncall_front, \
+        init_fncall_rear, init_assign_stmt;
+    tree fncall_param_front, fncall_param_rear;
 
     while (decl != NULL_TREE)
     {
@@ -1024,6 +1089,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
                 && ! DECL_EXTERNAL (decl)
                 && ! TREE_STATIC (decl))
         {
+            printf("DEBUG Instrumenting %s is_complete_type %d\n", IDENTIFIER_POINTER(DECL_NAME(decl)), COMPLETE_TYPE_P(decl));
 
             /* construct a tree corresponding to the type struct{
                unsigned int rz_front[6U];
@@ -1059,8 +1125,21 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
 
                 sframe_inserted = true;
             }
+
+            // Calculate the zone sizes
+            size_t element_size = 0, request_size = 0;
+            if (COMPLETE_TYPE_P(decl)){
+                request_size = TREE_INT_CST_LOW(TYPE_SIZE_UNIT(TREE_TYPE(decl)));
+                if (TREE_CODE(TREE_TYPE(decl)) == ARRAY_TYPE)
+                    element_size = TREE_INT_CST_LOW(TYPE_SIZE_UNIT(TREE_TYPE(TREE_TYPE(decl))));
+                else
+                    element_size = request_size;
+            }
+            calculate_zone_sizes(element_size, request_size, /*global*/ false, COMPLETE_TYPE_P(decl), &front_rz_size, &rear_rz_size);
+            printf("DEBUG *SIZES* req_size %u, ele_size %u, fsize %u, rsize %u\n", request_size, element_size, front_rz_size, rear_rz_size);
 			
-            tree struct_type = create_struct_type(decl);
+            tree struct_type = create_struct_type(decl, front_rz_size, rear_rz_size);
+            debug_tree(struct_type);
             tree struct_var = create_struct_var(struct_type, decl, location);
             declare_vars(struct_var, stmt, 0);
 
@@ -1069,40 +1148,32 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
 			myHtable[count].t_name = struct_var;
 			count++;
 
-			//printf("Pass1 IDPTR : %s\n",IDENTIFIER_POINTER(DECL_NAME(struct_var)));
-            tree size = NULL_TREE;
-            gimple uninit_fncall_front, uninit_fncall_rear, init_fncall_front, \
-                            init_fncall_rear, init_assign_stmt;
-            tree fncall_param_front, fncall_param_rear;
-            /* Variable-sized objects should have sizes already been
-               gimplified when we got here. */
-            size = convert (unsigned_type_node, size_int(8U)); // TODO is this right? we need to provide size of RZ here.
-            gcc_assert (is_gimple_val (size));
+            fsize = convert (unsigned_type_node, size_int(front_rz_size));
+            gcc_assert (is_gimple_val (fsize));
 
-            // Need to change mf_mark
-            // TODO first paramter is void * pointer to the rz field (front or rear). not struct type.
-            //      Moreover, there are only two parameters, unlike mudflap's calls.
-            // fncall_param_front = mf_mark (build1 (ADDR_EXPR, ptr_type_node, fieldfront));
-            // fncall_param_rear = mf_mark (build1 (ADDR_EXPR, ptr_type_node, fieldrear));
             tree rz_front = TYPE_FIELDS(struct_type);
-            tree rz_rear = DECL_CHAIN(DECL_CHAIN(TYPE_FIELDS (struct_type)));
             fncall_param_front = mf_mark (build1 (ADDR_EXPR, ptr_type_node, build3 (COMPONENT_REF, TREE_TYPE(rz_front),
                                                       struct_var, rz_front, NULL_TREE)));
-            fncall_param_rear = mf_mark (build1 (ADDR_EXPR, ptr_type_node, build3 (COMPONENT_REF, TREE_TYPE(rz_rear),
-                                                      struct_var, rz_rear, NULL_TREE)));
-
-            uninit_fncall_front = gimple_build_call (lbc_uninit_front_rz_fndecl, 2, fncall_param_front, size);
-            uninit_fncall_rear = gimple_build_call (lbc_uninit_rear_rz_fndecl, 2, fncall_param_rear, size);
-
-            init_fncall_front = gimple_build_call (lbc_init_front_rz_fndecl, 2, fncall_param_front, size);
-            init_fncall_rear = gimple_build_call (lbc_init_rear_rz_fndecl, 2, fncall_param_rear, size);
-
+            uninit_fncall_front = gimple_build_call (lbc_uninit_front_rz_fndecl, 2, fncall_param_front, fsize);
+            init_fncall_front = gimple_build_call (lbc_init_front_rz_fndecl, 2, fncall_param_front, fsize);
             gimple_set_location (init_fncall_front, location);
-            gimple_set_location (init_fncall_rear, location);
             gimple_set_location (uninit_fncall_front, location);
-            gimple_set_location (uninit_fncall_rear, location);
 
-            // Handle the initializer in the declaration
+            // In complete types have only a front red zone
+            if (COMPLETE_TYPE_P(decl)){
+                rsize = convert (unsigned_type_node, size_int(rear_rz_size));
+                gcc_assert (is_gimple_val (rsize));
+
+                tree rz_rear = DECL_CHAIN(DECL_CHAIN(TYPE_FIELDS (struct_type)));
+                fncall_param_rear = mf_mark (build1 (ADDR_EXPR, ptr_type_node, build3 (COMPONENT_REF, TREE_TYPE(rz_rear),
+                                struct_var, rz_rear, NULL_TREE)));
+                init_fncall_rear = gimple_build_call (lbc_init_rear_rz_fndecl, 2, fncall_param_rear, rsize);
+                uninit_fncall_rear = gimple_build_call (lbc_uninit_rear_rz_fndecl, 2, fncall_param_rear, rsize);
+                gimple_set_location (init_fncall_rear, location);
+                gimple_set_location (uninit_fncall_rear, location);
+            }
+
+            // TODO Do I need this?
             if (DECL_INITIAL(decl) != NULL_TREE){
                 // This code never seems to be getting executed for somehting like int i = 10;
                 // I have no idea why? But looking at the tree dump, seems like its because
@@ -1117,6 +1188,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
 
             if (gsi_end_p (initially_stmts))
             {
+                // TODO handle this
                 if (!DECL_ARTIFICIAL (decl))
                     warning (OPT_Wmudflap,
                             "mudflap cannot track %qE in stub function",
@@ -1130,14 +1202,15 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
 
                 //gsi_insert_before (&initially_stmts, register_fncall, GSI_SAME_STMT);
                 gsi_insert_before (&initially_stmts, init_fncall_front, GSI_SAME_STMT);
-                gsi_insert_before (&initially_stmts, init_fncall_rear, GSI_SAME_STMT);
+                if (COMPLETE_TYPE_P(decl))
+                    gsi_insert_before (&initially_stmts, init_fncall_rear, GSI_SAME_STMT);
 
                 /* Accumulate the FINALLY piece.  */
                 //gimple_seq_add_stmt (&finally_stmts, unregister_fncall);
                 gimple_seq_add_stmt (&finally_stmts, uninit_fncall_front);
-                gimple_seq_add_stmt (&finally_stmts, uninit_fncall_rear);
+                if (COMPLETE_TYPE_P(decl))
+                    gimple_seq_add_stmt (&finally_stmts, uninit_fncall_rear);
 
-                // TODO what about ensure_sframe_bitmap()?
             }
             mf_mark (decl);
         }
