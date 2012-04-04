@@ -381,7 +381,6 @@ int
 plugin_init (struct plugin_name_args *pinfo,
              struct plugin_gcc_version *version)
 {
-    struct register_pass_info pass_info0;
     struct register_pass_info pass_info1;
     struct register_pass_info pass_info2;
     const char *plugin_name = "LBC";
@@ -809,7 +808,7 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
     // Add the call to is_char_red
     if (check_red_flag) {
         printf("Entering is_char_red\n");
-        fncall_param_val = fold_build2_loc (location, MEM_REF, type, addr, \
+        fncall_param_val = fold_build2_loc (location, MEM_REF, ptr_type_node, addr, \
                             build_int_cst(build_pointer_type(type), 0));
         fncall_param_val = fold_convert_loc (location, unsigned_type_node, fncall_param_val);
         is_char_red_call = gimple_build_call (lbc_is_char_red_fndecl, 3, fncall_param_val, size, \
@@ -1139,7 +1138,6 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
             printf("DEBUG *SIZES* req_size %u, ele_size %u, fsize %u, rsize %u\n", request_size, element_size, front_rz_size, rear_rz_size);
 			
             tree struct_type = create_struct_type(decl, front_rz_size, rear_rz_size);
-            debug_tree(struct_type);
             tree struct_var = create_struct_var(struct_type, decl, location);
             declare_vars(struct_var, stmt, 0);
 
