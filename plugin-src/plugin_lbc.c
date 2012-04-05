@@ -279,6 +279,13 @@ mf_make_builtin (enum tree_code category, const char *name, tree type)
 }
 
 void
+execute_lbc_finish (void *event_data, void *data)
+{
+    printf("Freeing hashmap\n");
+    hashmap_free(decl_map);
+}
+
+void
 execute_lbc_init (void *event_data, void *data)
 {
     lbc_init();
@@ -396,6 +403,7 @@ plugin_init (struct plugin_name_args *pinfo,
 
     // Start plugin related work here.
     register_callback (plugin_name, PLUGIN_START_UNIT, execute_lbc_init, NULL);
+    register_callback (plugin_name, PLUGIN_FINISH_UNIT, execute_lbc_finish, NULL);
 
     // TODO for some reason the following call is giving a segfault in GCC code
     //register_callback (plugin_name, PLUGIN_INFO, NULL, &info);
