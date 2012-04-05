@@ -61,7 +61,7 @@ int plugin_is_GPL_compatible;
 
 /* Helpers.  */
 static tree mf_build_string (const char *string);
-char* mf_varname_tree (tree);
+static char* mf_varname_tree (tree);
 
 void execute_lbc_init (void *event_data, void *data);
 
@@ -127,13 +127,13 @@ mf_build_string (const char *string)
    Try to construct a helpful string, including file/function/variable
    name.  */
 
-//static tree
-char * mf_varname_tree (tree decl)
+static char * 
+mf_varname_tree (tree decl)
 {
 	static pretty_printer buf_rec;
 	static int initialized = 0;
 	pretty_printer *buf = & buf_rec;
-	const char *buf_contents;
+	char *buf_contents;
 	tree result;
 
 	gcc_assert (decl);
@@ -226,10 +226,6 @@ char * mf_varname_tree (tree decl)
 
 
 /* global tree nodes */
-
-/* Global tree objects for global variables and functions exported by
-   mudflap runtime library.  mf_init_extern_trees must be called
-   before using these.  */
 
 /* uintptr_t (usually "unsigned long") */
 static GTY (()) tree mf_uintptr_type;
