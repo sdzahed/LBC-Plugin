@@ -49,6 +49,8 @@ along with GCC; see the file COPYING3.  If not see
 #include "cgraph.h"
 #include "gimple.h"
 
+#include "hashmap.h"
+
 int plugin_is_GPL_compatible;
 
 /* Internal function decls */
@@ -75,6 +77,9 @@ static gimple_seq mx_register_decls (tree, gimple_seq, gimple, location_t, bool)
 static unsigned int execute_mudflap_function_decls (void);
 static tree create_struct_type(tree decl, size_t front_rz_size, size_t rear_rz_size);
 static tree mx_xform_instrument_pass2(tree temp);
+
+/* Hash map to store instrumented var_decl nodes */
+map_t decl_map;
 
 /* Helper method to build a string cst.
    Used by mf_build_asm
@@ -256,11 +261,6 @@ struct htable_entry{
 	tree t_name;
 };
 
-#define HTABLE_MAX_ENTRY 1000
-struct htable_entry myHtable[HTABLE_MAX_ENTRY];
-int count = 0;
-
-
 /* Helper for mudflap_init: construct a decl with the given category,
    name, and type, mark it an external reference, and pushdecl it.  */
 static inline tree
@@ -297,6 +297,7 @@ lbc_init (void)
         return;
     done = true;
 
+    decl_map = hashmap_new();
     printf("LBC Plugin: Building decls\n");
 
 	lbc_const_void_ptr_type = build_qualified_type (ptr_type_node, TYPE_QUAL_CONST);
@@ -478,23 +479,20 @@ mf_decl_eligible_p (tree decl)
 
 tree find_instr_node(tree temp)
 {
-	int i = 0;
-	while(i < count){
-		printf("myHtable[i].name : %s, mf_varname_tree(temp) : %s\n", 
-			myHtable[i].name, mf_varname_tree(temp));
-		if(strcmp(myHtable[i].name, mf_varname_tree(temp)) == 0){
-			printf("---------------- match found --------------------\n\n");
-			return myHtable[i].t_name;
-		}
-		i++;
-	}
-	printf("---------------- NO match found --------------------\n\n");
-	return NULL_TREE;
+	int ret = 0;
+    tree decl_node;
+    ret = hashmap_get(decl_map, mf_varname_tree(temp), (void **)&decl_node);
+    if(ret == MAP_OK){
+        printf("---------------- match found --------------------\n");
+        return decl_node;
+    }else
+        printf("---------------- NO match found --------------------\n");
+    return NULL_TREE;
 }
 
 static tree mx_xform_instrument_pass2(tree temp)
 {
-    printf("========== Entered mx_xform_instrument_pass2, count : %d =============\n", count);
+    printf("========== Entered mx_xform_instrument_pass2 =============\n");
 
     // TODO figure out what to do with COMPONENT_REFs. ideally this should never come here.
     if (TREE_CODE(temp) == COMPONENT_REF)
@@ -1078,6 +1076,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
     gimple uninit_fncall_front, uninit_fncall_rear, init_fncall_front, \
         init_fncall_rear, init_assign_stmt;
     tree fncall_param_front, fncall_param_rear;
+    int map_ret;
 
     while (decl != NULL_TREE)
     {
@@ -1142,9 +1141,8 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
             declare_vars(struct_var, stmt, 0);
 
 			/* Inserting into hashtable */
-			strcpy(myHtable[count].name, mf_varname_tree(decl));
-			myHtable[count].t_name = struct_var;
-			count++;
+            map_ret = hashmap_put(decl_map, mf_varname_tree(decl), struct_var);
+            gcc_assert(map_ret == MAP_OK);
 
             fsize = convert (unsigned_type_node, size_int(front_rz_size));
             gcc_assert (is_gimple_val (fsize));

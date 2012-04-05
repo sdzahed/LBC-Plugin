@@ -15,6 +15,33 @@
 int plugin_is_GPL_compatible;
 
 void
+handle_init (void *event_data, void *data)
+{
+    tree glob = NULL_TREE;
+    printf("Event data is null: %d\n", event_data == NULL);
+    if (current_function_decl == NULL_TREE)
+        printf("It is null\n");
+    else
+        glob = DECL_CONTEXT(current_function_decl);
+
+    if (glob != NULL_TREE && TREE_CODE(glob) == TRANSLATION_UNIT_DECL)
+    {
+        printf("Found it in %s\n", IDENTIFIER_POINTER(DECL_NAME(current_function_decl)));
+        tree decl = BLOCK_VARS(DECL_INITIAL(glob));
+        while (decl != NULL_TREE) {
+            //printf("Global var: TREE_CODE(t) : %s\n", tree_code_name[(int)TREE_CODE(decl)]);
+            if (TREE_CODE(decl) == VAR_DECL){
+                const char *var_name = IDENTIFIER_POINTER(DECL_NAME(decl));
+                printf("Glob var: %s extern:%d static:%d complete:%d file_scope: %d common: %d\n", var_name, \
+                        DECL_EXTERNAL(decl), TREE_STATIC(decl), COMPLETE_TYPE_P(decl), DECL_FILE_SCOPE_P(decl), DECL_COMMON(decl));
+                debug_tree(decl);
+            }
+            decl = DECL_CHAIN(decl);
+        }
+    }
+}
+
+void
 handle_new_passes (void *event_data, void *data)
 {
   struct opt_pass *pass = (struct opt_pass *)event_data;
@@ -42,7 +69,9 @@ plugin_init (struct plugin_name_args *plugin_info,
                  plugin_name, argv[i].key, argv[i].value);
     }
 
-  register_callback (plugin_name, PLUGIN_PASS_EXECUTION, handle_new_passes, NULL);
+  //register_callback (plugin_name, PLUGIN_START_UNIT, handle_init, NULL);
+  register_callback (plugin_name, PLUGIN_ALL_PASSES_START, handle_init, NULL);
+  //register_callback (plugin_name, PLUGIN_PASS_EXECUTION, handle_new_passes, NULL);
 
   return 0;
 }
