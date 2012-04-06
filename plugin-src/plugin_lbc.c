@@ -834,6 +834,7 @@ mf_xform_statements (void)
 	gimple_stmt_iterator i;
 	int saved_last_basic_block = last_basic_block;
 	enum gimple_rhs_class grhs_class;
+    unsigned argc, j;
 
 	bb = ENTRY_BLOCK_PTR ->next_bb;
 	do
@@ -873,6 +874,12 @@ mf_xform_statements (void)
 						tree fndecl = gimple_call_fndecl (s);
 						if (fndecl && (DECL_FUNCTION_CODE (fndecl) == BUILT_IN_ALLOCA))
 							gimple_call_set_cannot_inline (s, true);
+
+                        argc = gimple_call_num_args(s);
+                        for (j = 0; j < argc; j++){
+                            mf_xform_derefs_1 (&i, gimple_call_arg_ptr (s, j),
+								gimple_location (s), integer_zero_node);
+                        }
 					}
 					break;
 
