@@ -7,4 +7,4 @@ CFLAGS+= -I$(GCCPLUGINS_DIR)/include -I../c_hashmap -fPIC -O2 -g -c
 all: plugin_lbc.so
 
 plugin_lbc.so: $(PLUGIN_OBJECT_FILES)
-	$(GCC) -shared $^ -o $@ -lhmap -L../c_hashmap
+	$(GCC) -shared $^ -o $@ -lJudy -L.

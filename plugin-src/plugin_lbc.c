@@ -48,8 +48,7 @@ along with GCC; see the file COPYING3.  If not see
 #include "ggc.h"
 #include "cgraph.h"
 #include "gimple.h"
-
-#include "hashmap.h"
+#include "Judy.h"
 
 int plugin_is_GPL_compatible;
 
@@ -79,7 +78,7 @@ static tree create_struct_type(tree decl, size_t front_rz_size, size_t rear_rz_s
 static tree mx_xform_instrument_pass2(tree temp);
 
 /* Hash map to store instrumented var_decl nodes */
-map_t decl_map;
+Pvoid_t decl_map;
 
 /* Helper method to build a string cst.
    Used by mf_build_asm
@@ -277,8 +276,7 @@ mf_make_builtin (enum tree_code category, const char *name, tree type)
 void
 execute_lbc_finish (void *event_data, void *data)
 {
-    printf("Freeing hashmap\n");
-    hashmap_free(decl_map);
+    printf("Done processing the tranlation unit.\n");
 }
 
 void
@@ -300,7 +298,8 @@ lbc_init (void)
         return;
     done = true;
 
-    decl_map = hashmap_new();
+    decl_map = (Pvoid_t) NULL;
+
     printf("LBC Plugin: Building decls\n");
 
 	lbc_const_void_ptr_type = build_qualified_type (ptr_type_node, TYPE_QUAL_CONST);
@@ -485,12 +484,15 @@ tree find_instr_node(tree temp)
 {
 	int ret = 0;
     tree decl_node;
-    ret = hashmap_get(decl_map, mf_varname_tree(temp), (void **)&decl_node);
-    if(ret == MAP_OK){
-        printf("---------------- match found --------------------\n");
+    PWord_t PV;
+    JSLG(PV, decl_map, mf_varname_tree(temp));
+    if(PV){
+        decl_node = ((tree) *PV);
+        gcc_assert(decl_node != NULL_TREE);
+        printf("[find_instr] Match found for %s --> %s\n",mf_varname_tree(temp), IDENTIFIER_POINTER(DECL_NAME(decl_node)));
         return decl_node;
     }else
-        printf("---------------- NO match found --------------------\n");
+        printf("[find_instr] Match not found for %s\n",mf_varname_tree(temp));
     return NULL_TREE;
 }
 
@@ -1152,8 +1154,10 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
             declare_vars(struct_var, stmt, 0);
 
 			/* Inserting into hashtable */
-            map_ret = hashmap_put(decl_map, mf_varname_tree(decl), struct_var);
-            gcc_assert(map_ret == MAP_OK);
+            PWord_t PV;
+            JSLI(PV, decl_map, mf_varname_tree(decl));
+            gcc_assert(PV);
+            *PV = (PWord_t) struct_var;
 
             fsize = convert (unsigned_type_node, size_int(front_rz_size));
             gcc_assert (is_gimple_val (fsize));
@@ -1181,6 +1185,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
             }
 
             // TODO Do I need this?
+#if 0
             if (DECL_INITIAL(decl) != NULL_TREE){
                 // This code never seems to be getting executed for somehting like int i = 10;
                 // I have no idea why? But looking at the tree dump, seems like its because
@@ -1192,6 +1197,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
                 init_assign_stmt = gimple_build_assign(orig_var_lval, DECL_INITIAL(decl));
                 gimple_set_location (init_assign_stmt, location);
             }
+#endif
 
             if (gsi_end_p (initially_stmts))
             {
@@ -1203,9 +1209,11 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
             }
             else
             {
+#if 0
                 // Insert the declaration initializer
                 if (DECL_INITIAL(decl) != NULL_TREE)
                     gsi_insert_before (&initially_stmts, init_assign_stmt, GSI_SAME_STMT);
+#endif
 
                 //gsi_insert_before (&initially_stmts, register_fncall, GSI_SAME_STMT);
                 gsi_insert_before (&initially_stmts, init_fncall_front, GSI_SAME_STMT);
