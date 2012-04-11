@@ -31,4 +31,11 @@ extern void mudflap_finish_file (void);
 extern int mf_marked_p (tree);
 extern tree mf_mark (tree);
 
+
+#ifdef LBCDEBUG
+#define DEBUGLOG(ARGS...) printf(ARGS)
+#else
+#define DEBUGLOG(ARGS...) do {} while (0)
+#endif
+
 #endif /* TREE_MUDFLAP_H */

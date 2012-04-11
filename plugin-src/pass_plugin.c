@@ -18,7 +18,6 @@ void
 handle_init (void *event_data, void *data)
 {
     tree glob = NULL_TREE;
-    printf("Event data is null: %d\n", event_data == NULL);
     if (current_function_decl == NULL_TREE)
         printf("It is null\n");
     else
@@ -29,11 +28,10 @@ handle_init (void *event_data, void *data)
         printf("Found it in %s\n", IDENTIFIER_POINTER(DECL_NAME(current_function_decl)));
         tree decl = BLOCK_VARS(DECL_INITIAL(glob));
         while (decl != NULL_TREE) {
-            //printf("Global var: TREE_CODE(t) : %s\n", tree_code_name[(int)TREE_CODE(decl)]);
             if (TREE_CODE(decl) == VAR_DECL){
                 const char *var_name = IDENTIFIER_POINTER(DECL_NAME(decl));
-                printf("Glob var: %s extern:%d static:%d complete:%d file_scope: %d common: %d\n", var_name, \
-                        DECL_EXTERNAL(decl), TREE_STATIC(decl), COMPLETE_TYPE_P(decl), DECL_FILE_SCOPE_P(decl), DECL_COMMON(decl));
+                printf("Glob var: %s decl_external:%d tree_static:%d complete:%d common: %d\n", var_name, \
+                        DECL_EXTERNAL(decl), TREE_STATIC(decl), COMPLETE_TYPE_P(decl), DECL_COMMON(decl));
                 debug_tree(decl);
             }
             decl = DECL_CHAIN(decl);

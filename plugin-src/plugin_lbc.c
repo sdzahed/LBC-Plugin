@@ -214,7 +214,7 @@ mf_varname_tree (tree decl)
 
 	/* Return the lot as a new STRING_CST.  */
 	buf_contents = pp_base_formatted_text (buf);
-	//printf("buf_contents : %s\n", buf_contents);
+	//DEBUGLOG("buf_contents : %s\n", buf_contents);
 	result = mf_build_string (buf_contents);
 	pp_clear_output_area (buf);
 
@@ -276,7 +276,7 @@ mf_make_builtin (enum tree_code category, const char *name, tree type)
 void
 execute_lbc_finish (void *event_data, void *data)
 {
-    printf("Done processing the tranlation unit.\n");
+    DEBUGLOG("Done processing the tranlation unit.\n");
 }
 
 void
@@ -300,7 +300,7 @@ lbc_init (void)
 
     decl_map = (Pvoid_t) NULL;
 
-    printf("LBC Plugin: Building decls\n");
+    DEBUGLOG("LBC Plugin: Building decls\n");
 
 	lbc_const_void_ptr_type = build_qualified_type (ptr_type_node, TYPE_QUAL_CONST);
 
@@ -329,7 +329,7 @@ lbc_init (void)
 			lbc_ensure_sframe_fntype);
 	lbc_is_char_red_fndecl = mf_make_builtin (FUNCTION_DECL, "is_char_red",
 			lbc_is_char_red_fntype);
-    printf("LBC Plugin: Done Building decls\n");
+    DEBUGLOG("LBC Plugin: Done Building decls\n");
 }
 
 static bool
@@ -390,7 +390,7 @@ plugin_init (struct plugin_name_args *pinfo,
 
     struct plugin_info info = {"1.0", "Use -fplugin=path/to/lbc.so to use the lbc plugin"};
 
-    printf("LBC Plugin: Initializing plugin version %s \n", info.version);
+    DEBUGLOG("LBC Plugin: Initializing plugin version %s \n", info.version);
 
     // Check for build time versus run time gcc version
     if (!plugin_default_version_check (version, &gcc_version))
@@ -403,23 +403,23 @@ plugin_init (struct plugin_name_args *pinfo,
     // TODO for some reason the following call is giving a segfault in GCC code
     //register_callback (plugin_name, PLUGIN_INFO, NULL, &info);
 
-    printf("LBC Plugin: Building pass1\n");
+    DEBUGLOG("LBC Plugin: Building pass1\n");
     pass_info1.pass = &pass_lbc_1.pass;
     pass_info1.reference_pass_name = "omplower";
     pass_info1.ref_pass_instance_number = 1;
     pass_info1.pos_op = PASS_POS_INSERT_BEFORE;
 
-    printf("LBC Plugin: Registering pass1\n");
+    DEBUGLOG("LBC Plugin: Registering pass1\n");
     register_callback (plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info1);
 
-    printf("LBC Plugin: Building pass2\n");
+    DEBUGLOG("LBC Plugin: Building pass2\n");
     pass_info2.pass = &pass_lbc_2.pass;
     //pass_info2.reference_pass_name = "ssa";
     pass_info2.reference_pass_name = "optimized";
     pass_info2.ref_pass_instance_number = 1;
     pass_info2.pos_op = PASS_POS_INSERT_BEFORE;
 
-    printf("LBC Plugin: Registering pass2\n");
+    DEBUGLOG("LBC Plugin: Registering pass2\n");
     register_callback (plugin_name, PLUGIN_PASS_MANAGER_SETUP, NULL, &pass_info2);
     return 0;
 }
@@ -443,7 +443,7 @@ plugin_init (struct plugin_name_args *pinfo,
 static unsigned int execute_mudflap_function_ops (void)
 {
 	struct gimplify_ctx gctx;
-	printf("Zahed: entering LBC pass2\n");
+	DEBUGLOG("Zahed: entering LBC pass2\n");
 	//return;
 	/* Don't instrument functions such as the synthetic constructor
 	   built during mudflap_finish_file.  */
@@ -489,16 +489,16 @@ tree find_instr_node(tree temp)
     if(PV){
         decl_node = ((tree) *PV);
         gcc_assert(decl_node != NULL_TREE);
-        printf("[find_instr] Match found for %s --> %s\n",mf_varname_tree(temp), IDENTIFIER_POINTER(DECL_NAME(decl_node)));
+        DEBUGLOG("[find_instr] Match found for %s --> %s\n",mf_varname_tree(temp), IDENTIFIER_POINTER(DECL_NAME(decl_node)));
         return decl_node;
     }else
-        printf("[find_instr] Match not found for %s\n",mf_varname_tree(temp));
+        DEBUGLOG("[find_instr] Match not found for %s\n",mf_varname_tree(temp));
     return NULL_TREE;
 }
 
 static tree mx_xform_instrument_pass2(tree temp)
 {
-    printf("========== Entered mx_xform_instrument_pass2 =============\n");
+    DEBUGLOG("========== Entered mx_xform_instrument_pass2 =============\n");
 
     // TODO figure out what to do with COMPONENT_REFs. ideally this should never come here.
     if (TREE_CODE(temp) == COMPONENT_REF)
@@ -513,7 +513,7 @@ static tree mx_xform_instrument_pass2(tree temp)
 	tree struct_type = TREE_TYPE(instr_node);
 
 	tree rz_orig_val = DECL_CHAIN(TYPE_FIELDS(struct_type));
-	printf("============ Exiting mx_xform_instrument_pass2 =============\n");
+	DEBUGLOG("============ Exiting mx_xform_instrument_pass2 =============\n");
 	return mf_mark(build3 (COMPONENT_REF, TREE_TYPE(rz_orig_val),
 				instr_node, rz_orig_val, NULL_TREE));
 }
@@ -571,7 +571,7 @@ mf_walk_comp_ref(tree *tp, tree type, location_t location, \
         }
         else
         {
-            printf("TREE_CODE(temp) : %s comp_ref_only = %d eligigle = %d\n", \
+            DEBUGLOG("TREE_CODE(temp) : %s comp_ref_only = %d eligigle = %d\n", \
                     tree_code_name[(int)TREE_CODE(var)], component_ref_only, \
                     mf_decl_eligible_p(var));
             gcc_assert (TREE_CODE (var) == VAR_DECL
@@ -644,7 +644,7 @@ mf_walk_n_instrument(tree *tp, bool *instrumented)
     /* Iterate to the top of the ARRAY_REF/COMPONENT_REF
        containment hierarchy to find the outermost VAR_DECL.  */
 
-    printf("Walking: TREE_CODE(t) : %s\n", tree_code_name[(int)TREE_CODE(t)]);
+    DEBUGLOG("Walking: TREE_CODE(t) : %s\n", tree_code_name[(int)TREE_CODE(t)]);
     if (TREE_CODE (t) == ARRAY_REF)
         TREE_OPERAND (t, 0) = mf_walk_n_instrument(&(TREE_OPERAND(t,0)), instrumented);
     else if (TREE_CODE (t) == COMPONENT_REF)
@@ -674,7 +674,7 @@ mf_walk_n_instrument(tree *tp, bool *instrumented)
             else
             {
                 if((temp = mx_xform_instrument_pass2(t)) == NULL_TREE)
-                    printf("Uninstrumented ADDR_EXPR operand. Returning.\n");
+                    DEBUGLOG("Uninstrumented ADDR_EXPR operand. Returning.\n");
                 else{
                     t = temp;
                     *instrumented = 1;
@@ -700,7 +700,7 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
 	if (dirflag == integer_zero_node && flag_mudflap_ignore_reads)
 		return;
 
-	printf("TREE_CODE(t) = %s, mf_decl_eligible_p : %d\n", 
+	DEBUGLOG("TREE_CODE(t) = %s, mf_decl_eligible_p : %d\n", 
 			tree_code_name[(int)TREE_CODE(*tp)], mf_decl_eligible_p(*tp));
 
 	t = *tp;
@@ -713,7 +713,7 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
 
 	/* Don't instrument marked nodes.  */
 	if (mf_marked_p (t) && !mf_decl_eligible_p(t)){
-		printf("Returning Here - 1\n");
+		DEBUGLOG("Returning Here - 1\n");
 		return;
 	}
 
@@ -722,13 +722,14 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
             TREE_CODE(t) == ARRAY_REF || \
             (TREE_CODE(t) == VAR_DECL && mf_decl_eligible_p(t)))
     {
-        printf("------ INSTRUMENTING NODES ---------\n");
+        DEBUGLOG("------ INSTRUMENTING NODES ---------\n");
         temp = TREE_OPERAND(t, 0);
 
-        if(TREE_CODE(temp) == STRING_CST)
+        if(TREE_CODE(temp) == STRING_CST || \
+                TREE_CODE(temp) == FUNCTION_DECL) // TODO Check this out? What do you do in this case?
             return;
 
-        printf("TREE_CODE(temp) : %s\n", tree_code_name[(int)TREE_CODE(temp)]);
+        DEBUGLOG("TREE_CODE(temp) : %s\n", tree_code_name[(int)TREE_CODE(temp)]);
 
         if (TREE_CODE(t) == VAR_DECL)
             *tp = mf_walk_n_instrument(tp, &instrumented);
@@ -739,7 +740,7 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
             return;
     } 
 
-    printf("Pass2 derefs: entering deref section\n");
+    DEBUGLOG("Pass2 derefs: entering deref section\n");
 
     type_node = NULL_TREE;
     //TODO move this to appropriate cases
@@ -749,7 +750,7 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
 		case ARRAY_REF:
 		case COMPONENT_REF: // TODO check if following works for comp refs
 			{ 
-                printf("------ INSIDE CASE COMPONENT_REF  ---------\n");
+                DEBUGLOG("------ INSIDE CASE COMPONENT_REF  ---------\n");
                 HOST_WIDE_INT bitsize, bitpos;
                 tree inner, offset;
                 int volatilep, unsignedp;
@@ -767,42 +768,42 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
             }
 
 		case INDIRECT_REF:
-			printf("------ INSIDE CASE INDIRECT_REF  ---------\n");
+			DEBUGLOG("------ INSIDE CASE INDIRECT_REF  ---------\n");
 			check_red_flag = 1;
 			addr = TREE_OPERAND (t, 0);
             break; // TODO continue?
 
 		case MEM_REF:
-			printf("------ INSIDE CASE MEM_REF  ---------\n");
+			DEBUGLOG("------ INSIDE CASE MEM_REF  ---------\n");
 			check_red_flag = 1;
 			addr = fold_build2_loc (location, POINTER_PLUS_EXPR, TREE_TYPE (TREE_OPERAND (t, 0)),
 					TREE_OPERAND (t, 0), fold_convert (sizetype, TREE_OPERAND (t, 1)));
             break;
 
 		case TARGET_MEM_REF:
-			printf("------ INSIDE CASE TARGET_MEM_REF  ---------\n");
+			DEBUGLOG("------ INSIDE CASE TARGET_MEM_REF  ---------\n");
 			check_red_flag = 1;
 			addr = tree_mem_ref_addr (ptr_type_node, t);
 			break; // TODO do you want to do this case? find out what it does.
 
 		case ARRAY_RANGE_REF:
-			printf("------ INSIDE CASE ARRAY_RANGE_REF  ---------\n");
-			printf("------ TODO not handled yet---------\n");
+			DEBUGLOG("------ INSIDE CASE ARRAY_RANGE_REF  ---------\n");
+			DEBUGLOG("------ TODO not handled yet---------\n");
 			return;
 
 		case BIT_FIELD_REF:
-			printf("------ INSIDE CASE BIT_FIELD_REF  ---------\n");
-			printf("------ TODO not handled yet---------\n");
+			DEBUGLOG("------ INSIDE CASE BIT_FIELD_REF  ---------\n");
+			DEBUGLOG("------ TODO not handled yet---------\n");
 			return;
 
 		default:
-			printf("------ INSIDE CASE DEFAULT  ---------\n");
+			DEBUGLOG("------ INSIDE CASE DEFAULT  ---------\n");
 			if(mf_decl_eligible_p(t))
 			{
-                printf("Do you want to be here?\n");
+                DEBUGLOG("Do you want to be here?\n");
                 return;
 				/*if((*tp = mx_xform_instrument_pass2(t)) == NULL_TREE){
-					printf("Failed to set tree operand\n");
+					DEBUGLOG("Failed to set tree operand\n");
 					return;
 				}*/
 			}
@@ -811,18 +812,18 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
 
     // Add the call to is_char_red
     if (check_red_flag) {
-        printf("Entering is_char_red\n");
+        DEBUGLOG("Entering is_char_red\n");
         fncall_param_val = fold_build2_loc (location, MEM_REF, ptr_type_node, addr, \
                             build_int_cst(build_pointer_type(type), 0));
         fncall_param_val = fold_convert_loc (location, unsigned_type_node, fncall_param_val);
         is_char_red_call = gimple_build_call (lbc_is_char_red_fndecl, 3, fncall_param_val, size, \
                             fold_convert_loc(location, ptr_type_node, addr));
         gimple_set_location (is_char_red_call, location);
-        debug_gimple_stmt(is_char_red_call);
+        //debug_gimple_stmt(is_char_red_call);
         gsi_insert_before (iter, is_char_red_call, GSI_SAME_STMT);
-        printf("Done with is_char_red\n");
+        DEBUGLOG("Done with is_char_red\n");
     }
-    printf("Exiting derefs \n");
+    DEBUGLOG("Exiting derefs \n");
 }
 
 /* Transform
@@ -850,10 +851,10 @@ mf_xform_statements (void)
 			switch (gimple_code (s))
 			{
 				case GIMPLE_ASSIGN:
-					printf("\n\n******** Gimlpe Assign LHS ***********\n");
+					DEBUGLOG("\n\n******** Gimlpe Assign LHS ***********\n");
 					mf_xform_derefs_1 (&i, gimple_assign_lhs_ptr (s),
 							gimple_location (s), integer_one_node);
-					printf("******** Gimlpe Assign RHS ***********\n");
+					DEBUGLOG("******** Gimlpe Assign RHS ***********\n");
 					mf_xform_derefs_1 (&i, gimple_assign_rhs1_ptr (s),
 							gimple_location (s), integer_zero_node);
 					grhs_class = get_gimple_rhs_class (gimple_assign_rhs_code (s));
@@ -907,7 +908,7 @@ static unsigned int
 execute_mudflap_function_decls (void)
 {
 	struct gimplify_ctx gctx;
-	printf("Zahed: entering LBC pass1\n");
+	DEBUGLOG("Zahed: entering LBC pass1\n");
 
 	/* Don't instrument functions such as the synthetic constructor
 	   built during mudflap_finish_file.  */
@@ -1100,7 +1101,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
                 && ! DECL_EXTERNAL (decl)
                 && ! TREE_STATIC (decl))
         {
-            printf("DEBUG Instrumenting %s is_complete_type %d\n", IDENTIFIER_POINTER(DECL_NAME(decl)), COMPLETE_TYPE_P(decl));
+            DEBUGLOG("DEBUG Instrumenting %s is_complete_type %d\n", IDENTIFIER_POINTER(DECL_NAME(decl)), COMPLETE_TYPE_P(decl));
 
             /* construct a tree corresponding to the type struct{
                unsigned int rz_front[6U];
@@ -1147,7 +1148,7 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
                     element_size = request_size;
             }
             calculate_zone_sizes(element_size, request_size, /*global*/ false, COMPLETE_TYPE_P(decl), &front_rz_size, &rear_rz_size);
-            printf("DEBUG *SIZES* req_size %u, ele_size %u, fsize %u, rsize %u\n", request_size, element_size, front_rz_size, rear_rz_size);
+            DEBUGLOG("DEBUG *SIZES* req_size %u, ele_size %u, fsize %u, rsize %u\n", request_size, element_size, front_rz_size, rear_rz_size);
 			
             tree struct_type = create_struct_type(decl, front_rz_size, rear_rz_size);
             tree struct_var = create_struct_var(struct_type, decl, location);
