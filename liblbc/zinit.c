@@ -204,7 +204,8 @@ void init_front_redzone (void* front_rz, unsigned front_rz_size)
 
 	unsigned redzone_size = front_rz_size;
 
-    printf("[Debug] : init_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
+    redzone_size = front_rz_size > 24 ? 24: front_rz_size;
+    //printf("[Debug] : init_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
 	if (redzone_size == 8) {	
 						
 		//printf("[Hema] : init_front_redzone - 1\n");																							
@@ -280,7 +281,8 @@ void uninit_front_redzone (void* front_rz, unsigned front_rz_size)
 
 	unsigned redzone_size = front_rz_size;					
 
-    printf("[Debug] : uninit_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
+    redzone_size = front_rz_size > 24 ? 24: front_rz_size;
+    //printf("[Debug] : uninit_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
 	if (redzone_size == 8) {																
 																												 	
 		unsigned address = (unsigned) front_rz;
@@ -338,7 +340,8 @@ void init_rear_redzone (void* rear_rz, unsigned rear_rz_size)
 
 	unsigned redzone_size = rear_rz_size;					
 
-    printf("[Debug] : init_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
+    redzone_size = rear_rz_size > 24 ? 24: rear_rz_size;
+    //printf("[Debug] : init_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
 	if (redzone_size == 8) {																
 																													
 		trans_8 *trans_ptr = (trans_8 *) rear_rz;				
@@ -400,7 +403,8 @@ void uninit_rear_redzone (void* rear_rz, unsigned rear_rz_size)
 
 	unsigned redzone_size = rear_rz_size;					
 
-    printf("[Debug] : uninit_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
+    redzone_size = rear_rz_size > 24 ? 24: rear_rz_size;
+    //printf("[Debug] : uninit_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
 																													
 	if (redzone_size == 8) {																
 																													
@@ -701,7 +705,7 @@ void is_char_red (unsigned int value,
 
 	unsigned int rz_abort_arg;
 																												 
-	printf("[Deubg] : is_char_red (value %u, size %u, ptr 0x%08x)\n", value, rz_value_size, ptr);																												 
+	//printf("[Deubg] : is_char_red (value %u, size %u, ptr 0x%08x)\n", value, rz_value_size, ptr);																												 
 	if (rz_value_size == 1)																 {
 		rz_abort_arg = (															 
 				(value & 0xff) == '\x17'); 													}	 
