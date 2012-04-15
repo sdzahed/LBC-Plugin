@@ -14,6 +14,12 @@
 static int printf(const char *format, ...);
 void abort(void);
 
+#ifdef LBCDEBUG
+#define DEBUGLOG(ARGS...) printf(ARGS)
+#else
+#define DEBUGLOG(ARGS...) do {} while (0)
+#endif
+
 //=============================================================================
  
 #define RZ_TRUE 	1

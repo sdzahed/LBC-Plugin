@@ -660,11 +660,11 @@ mf_walk_n_instrument(tree *tp, bool *instrumented)
     }
     else
     {
-        gcc_assert (TREE_CODE (t) == VAR_DECL
-                    || TREE_CODE (t) == SSA_NAME /* TODO: Check this */
-                    || TREE_CODE (t) == PARM_DECL
-                    || TREE_CODE (t) == RESULT_DECL
-                    || TREE_CODE (t) == STRING_CST);
+        //gcc_assert (TREE_CODE (t) == VAR_DECL
+        //            || TREE_CODE (t) == SSA_NAME /* TODO: Check this */
+        //            || TREE_CODE (t) == PARM_DECL
+        //            || TREE_CODE (t) == RESULT_DECL
+        //            || TREE_CODE (t) == STRING_CST);
             /* Don't instrument this access if the underlying
                variable is not "eligible".  This test matches
                those arrays that have only known-valid indexes,

@@ -205,23 +205,23 @@ void init_front_redzone (void* front_rz, unsigned front_rz_size)
 	unsigned redzone_size = front_rz_size;
 
     redzone_size = front_rz_size > 24 ? 24: front_rz_size;
-    //printf("[Debug] : init_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
+    DEBUGLOG("[Debug] : init_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
 	if (redzone_size == 8) {	
 						
-		//printf("[Hema] : init_front_redzone - 1\n");																							
+		DEBUGLOG("[DEBUG] : init_front_redzone - 1\n");																							
 		trans_8 *trans_ptr = (trans_8 *) front_rz;
-		//printf("[Hema] : init_front_redzone - 2\n");		
-/*																					
+		DEBUGLOG("[DEBUG] : init_front_redzone - 2\n");		
+																					
 		if(trans_ptr)
-			printf("[Hema] : trans_ptr NOT NULL\n");
+			DEBUGLOG("[DEBUG] : trans_ptr NOT NULL\n");
 		else
-			printf("[Hema] : trans_ptr NULL\n");
-*/
+			DEBUGLOG("[DEBUG] : trans_ptr NULL\n");
+
 	
-		//printf("[Hema] : red_8.redzone[0] = %x, red_8.redzone[1] = %x\n", red_8.redzone[0], red_8.redzone[1]);
+		DEBUGLOG("[DEBUG] : red_8.redzone[0] = %x, red_8.redzone[1] = %x\n", red_8.redzone[0], red_8.redzone[1]);
 
 		*trans_ptr = red_8;		
-		//printf("[Hema] : init_front_redzone - 3\n");																																												
+		DEBUGLOG("[DEBUG] : init_front_redzone - 3\n");																																												
 		unsigned address = (unsigned) front_rz;					
 		unsigned higher_index = 															
 			( address >> RZ_HIGHER_ADDR_BITS);									
@@ -229,8 +229,12 @@ void init_front_redzone (void* front_rz, unsigned front_rz_size)
 		((address & RZ_LOWER_CHAR_ADDR_MSK) >> 								
 		 	RZ_NUMBER_OF_BITS);																	
 																													
+		DEBUGLOG("[DEBUG] : init_front_redzone - 4\n");
+		DEBUGLOG("[DEBUG] : init_front_redzone - zone_map 0x%08x high: 0x%08x low: 0x%08x\n", \
+                (((unsigned char *) zone_map[higher_index]) + lower_index), higher_index, zone_map);
 		*(((unsigned char *) zone_map[higher_index]) + lower_index)			
 			|= 0xFF;																						
+		DEBUGLOG("[DEBUG] : init_front_redzone - 5\n");
 	}
 
 	else if (redzone_size == 16) {													
@@ -265,7 +269,8 @@ void init_front_redzone (void* front_rz, unsigned front_rz_size)
 	
 	else																										
 		abort();																															
-}					
+    DEBUGLOG("[Debug] : Exiting init_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);
+}			
 
 
 /*	A function to uninitialize an AREA OF FRONT REDZONE ONLY with redzone values and also mark the
@@ -282,7 +287,7 @@ void uninit_front_redzone (void* front_rz, unsigned front_rz_size)
 	unsigned redzone_size = front_rz_size;					
 
     redzone_size = front_rz_size > 24 ? 24: front_rz_size;
-    //printf("[Debug] : uninit_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
+    //DEBUGLOG("[Debug] : uninit_front_redzone (0x%08x, %u)\n", front_rz, front_rz_size);																							
 	if (redzone_size == 8) {																
 																												 	
 		unsigned address = (unsigned) front_rz;
@@ -341,7 +346,7 @@ void init_rear_redzone (void* rear_rz, unsigned rear_rz_size)
 	unsigned redzone_size = rear_rz_size;					
 
     redzone_size = rear_rz_size > 24 ? 24: rear_rz_size;
-    //printf("[Debug] : init_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
+    //DEBUGLOG("[Debug] : init_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
 	if (redzone_size == 8) {																
 																													
 		trans_8 *trans_ptr = (trans_8 *) rear_rz;				
@@ -404,7 +409,7 @@ void uninit_rear_redzone (void* rear_rz, unsigned rear_rz_size)
 	unsigned redzone_size = rear_rz_size;					
 
     redzone_size = rear_rz_size > 24 ? 24: rear_rz_size;
-    //printf("[Debug] : uninit_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
+    //DEBUGLOG("[Debug] : uninit_rear_redzone (0x%08x, %u)\n", rear_rz, rear_rz_size);																							
 																													
 	if (redzone_size == 8) {																
 																													
@@ -698,14 +703,14 @@ void is_char_red (unsigned int value,
 				const void* ptr)
 {
 
-	//printf("[Hema] : is_char_red - start\n");																												 
+	//DEBUGLOG("[DEBUG] : is_char_red - start\n");																												 
 	unsigned rz_value_size = (orig_value_size < 				 
 					sizeof(value)) ? 															
 					orig_value_size : sizeof(value);
 
 	unsigned int rz_abort_arg;
 																												 
-	//printf("[Deubg] : is_char_red (value %u, size %u, ptr 0x%08x)\n", value, rz_value_size, ptr);																												 
+	DEBUGLOG("[Deubg] : is_char_red (value %u, size %u, ptr 0x%08x)\n", value, rz_value_size, ptr);																												 
 	if (rz_value_size == 1)																 {
 		rz_abort_arg = (															 
 				(value & 0xff) == '\x17'); 													}	 
@@ -718,11 +723,11 @@ void is_char_red (unsigned int value,
 	else 																									 
 		rz_abort_arg = (*((int *)(ptr)) == 0x17171717);			 
 																												 
-	//printf("[Hema] : rz_abort_arg = %u\n", rz_abort_arg);																												 
+	//DEBUGLOG("[DEBUG] : rz_abort_arg = %u\n", rz_abort_arg);																												 
 	if (unlikely(rz_abort_arg))
 {
 		 
-	//	printf("[Hema] : unlikely - rz_abort_arg%u\n");																												 
+	//	DEBUGLOG("[DEBUG] : unlikely - rz_abort_arg%u\n");																												 
 		is_redzone(ptr);													 	 
 }
 }
@@ -780,21 +785,21 @@ void ensure_sframe_bitmap(void)
 
 		//	Here we are marking the start and end of the frame.
 		//	Note that in x86 the stack grows down. Hence %esp < %ebp
-		//printf("[Hema]: In ensure_sframe_bitmap-1\n");
+		DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-1\n");
 		asm volatile ("mov %%esp, %0" : "=g" (frame_start):);
 		
-		//printf("[Hema]: In ensure_sframe_bitmap-2\n");
+		//DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-2\n");
 		asm volatile ("mov %%ebp, %0" : "=g" (frame_end):);
 
 		
-		//printf("[Hema]: In ensure_sframe_bitmap-3\n");
+		//DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-3\n");
 
 		frame_end += 1024; // TODO fix this
 		
 		ensure_addr_bitmap (frame_start, frame_end);
 }
 
-// [Hema: added the below definitions from zcheck.c]
+// [DEBUG: added the below definitions from zcheck.c]
 
 //=============================================================================
 //	Note that for the time being we are forced to place this function in the
@@ -836,7 +841,7 @@ is_redzone(void * ptr)
  *	function and NOTHING ELSE.
  * */
 #ifdef	RZ_DUMMY_CHECK
-	//printf("[Hema] : In is_redzone - 1\n");
+	//DEBUGLOG("[DEBUG] : In is_redzone - 1\n");
 	return; 
 #else
 /*	The basic objective here is to pass the pointer to the stack variable
@@ -846,7 +851,7 @@ is_redzone(void * ptr)
  *	results in lots of writes that MAY NOT matter. Will have to check.
  * */
 
-	//printf("[Hema] : In is_redzone - 2\n");
+	//DEBUGLOG("[DEBUG] : In is_redzone - 2\n");
 	unsigned index = (unsigned)ptr;
 //	asm volatile ("movd %%mm0, %0\n" : "=r" (index) : );
 
