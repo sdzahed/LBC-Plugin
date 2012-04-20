@@ -781,22 +781,14 @@ void ensure_addr_bitmap (void *addr_start, void *addr_end)
 //void ensure_sframe_bitmap(void* frame_start, void* frame_end)
 void ensure_sframe_bitmap(void)
 {
-		void *frame_start, *frame_end;
+    void * frame_start, *frame_end;
 
-		//	Here we are marking the start and end of the frame.
-		//	Note that in x86 the stack grows down. Hence %esp < %ebp
-		DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-1\n");
-		asm volatile ("mov %%esp, %0" : "=g" (frame_start):);
-		
-		//DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-2\n");
-		asm volatile ("mov %%ebp, %0" : "=g" (frame_end):);
+    frame_start = __builtin_frame_address(0);
+    frame_end  =  __builtin_frame_address(1);
 
-		
-		//DEBUGLOG("[DEBUG]: In ensure_sframe_bitmap-3\n");
+    DEBUGLOG("[DEBUG] ensure_sframe fstart 0x%08x fend 0x%08x\n", frame_start, frame_end);
 
-		frame_end += 1024; // TODO fix this
-		
-		ensure_addr_bitmap (frame_start, frame_end);
+    ensure_addr_bitmap (frame_start, frame_end);
 }
 
 // [DEBUG: added the below definitions from zcheck.c]
