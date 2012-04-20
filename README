@@ -1,10 +1,26 @@
-To create the lbc plugin use the following command:
-gcc -I`gcc -print-file-name=plugin`/include -fPIC -shared -O2 plugin_lbc.c -o plugin_lbc.so
+1) Build Judy and copy the lib file to plugin directory.
 
+    cd judy-1.0.5
+    ./configure
+    make
+    cp src/obj/.libs/libJudy.a ../plugin_src/
 
-To create the static library use the following:
-gcc -c -I. -O2 zinit.c -o zinit.o
-ar rcs liblbc.a zinit.o
+2) Compile liblbc
 
-To compile the test programs use this:
-gcc -fplugin=../plugin-src/plugin_lbc.so hello.c -llbc -fdump-tree-all -L../liblbc/
+    gcc -c -I. -O2 zinit.c -o zinit.o
+    ar rcs liblbc.a zinit.o
+
+3) Create plugin so file.
+
+    cd plugin_src
+    make
+
+    or use the following gcc command
+    gcc -I`gcc -print-file-name=plugin`/include -fPIC -shared -O2 plugin_lbc.c -o plugin_lbc.so
+
+4) Start using the plugin using the following command:
+
+    gcc -fplugin=../plugin-src/plugin_lbc.so hello.c -llbc -fdump-tree-all -L../liblbc/
+
+Alternatively, copy the files liblbc.a and plugin_lbc.so to /usr/local/lib in order to skip
+the relative paths in the above command line.

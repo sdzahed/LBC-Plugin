@@ -68,8 +68,8 @@ plugin_init (struct plugin_name_args *plugin_info,
     }
 
   //register_callback (plugin_name, PLUGIN_START_UNIT, handle_init, NULL);
-  register_callback (plugin_name, PLUGIN_ALL_PASSES_START, handle_init, NULL);
-  //register_callback (plugin_name, PLUGIN_PASS_EXECUTION, handle_new_passes, NULL);
+  //register_callback (plugin_name, PLUGIN_ALL_PASSES_START, handle_init, NULL);
+  register_callback (plugin_name, PLUGIN_PASS_EXECUTION, handle_new_passes, NULL);
 
   return 0;
 }

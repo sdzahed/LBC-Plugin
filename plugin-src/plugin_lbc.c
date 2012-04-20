@@ -725,8 +725,8 @@ mf_xform_derefs_1 (gimple_stmt_iterator *iter, tree *tp,
         DEBUGLOG("------ INSTRUMENTING NODES ---------\n");
         temp = TREE_OPERAND(t, 0);
 
-        if(TREE_CODE(temp) == STRING_CST || \
-                TREE_CODE(temp) == FUNCTION_DECL) // TODO Check this out? What do you do in this case?
+        if(temp && (TREE_CODE(temp) == STRING_CST || \
+                TREE_CODE(temp) == FUNCTION_DECL)) // TODO Check this out? What do you do in this case?
             return;
 
         DEBUGLOG("TREE_CODE(temp) : %s\n", tree_code_name[(int)TREE_CODE(temp)]);
@@ -875,8 +875,8 @@ mf_xform_statements (void)
 				case GIMPLE_CALL:
 					{
 						tree fndecl = gimple_call_fndecl (s);
-						if (fndecl && (DECL_FUNCTION_CODE (fndecl) == BUILT_IN_ALLOCA))
-							gimple_call_set_cannot_inline (s, true);
+						//if (fndecl && (DECL_FUNCTION_CODE (fndecl) == BUILT_IN_ALLOCA))
+						//	gimple_call_set_cannot_inline (s, true);
 
                         argc = gimple_call_num_args(s);
                         for (j = 0; j < argc; j++){
@@ -1099,7 +1099,8 @@ mx_register_decls (tree decl, gimple_seq seq, gimple stmt, location_t location, 
                 && ! mf_marked_p (decl)
                 /* Automatic variable.  */
                 && ! DECL_EXTERNAL (decl)
-                && ! TREE_STATIC (decl))
+                && ! TREE_STATIC (decl)
+                && get_name(decl))
         {
             DEBUGLOG("DEBUG Instrumenting %s is_complete_type %d\n", IDENTIFIER_POINTER(DECL_NAME(decl)), COMPLETE_TYPE_P(decl));
 
