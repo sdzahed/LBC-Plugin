@@ -60,7 +60,7 @@ int plugin_is_GPL_compatible;
 
 /* Helpers.  */
 static tree mf_build_string (const char *string);
-static char* mf_varname_tree (tree);
+static const char* mf_varname_tree (tree);
 
 void execute_lbc_init (void *event_data, void *data);
 
@@ -106,13 +106,13 @@ mf_build_string (const char *string)
    Try to construct a helpful string, including file/function/variable
    name.  */
 
-static char * 
+static const char * 
 mf_varname_tree (tree decl)
 {
 	static pretty_printer buf_rec;
 	static int initialized = 0;
 	pretty_printer *buf = & buf_rec;
-	char *buf_contents;
+	const char *buf_contents;
 	tree result;
 
 	gcc_assert (decl);
@@ -313,7 +313,7 @@ lbc_init (void)
 }
 
 static bool
-gate_lbc (void)
+gate_lbc1 (void)
 {
   return true;
 }
@@ -323,7 +323,7 @@ struct gimple_opt_pass pass_lbc_1 =
  {
   GIMPLE_PASS,
   "lbc1",                           /* name */
-  gate_lbc,                         /* gate */
+  gate_lbc1,                         /* gate */
   execute_mudflap_function_decls,       /* execute */
   NULL,                                 /* sub */
   NULL,                                 /* next */
@@ -338,12 +338,19 @@ struct gimple_opt_pass pass_lbc_1 =
  }
 };
 
+
+static bool
+gate_lbc2 (void)
+{
+  return true;
+}
+
 struct gimple_opt_pass pass_lbc_2 =
 {
  {
   GIMPLE_PASS,
   "lbc2",                           /* name */
-  gate_lbc,                         /* gate */
+  gate_lbc2,                         /* gate */
   execute_mudflap_function_ops,         /* execute */
   NULL,                                 /* sub */
   NULL,                                 /* next */
@@ -419,6 +426,7 @@ plugin_init (struct plugin_name_args *pinfo,
  2) Mark BUILTIN_ALLOCA calls not inlineable.
 
  */
+
 
 static unsigned int execute_mudflap_function_ops (void)
 {
@@ -984,6 +992,8 @@ create_struct_var (tree type, tree decl, location_t location)
     DECL_EXTERNAL (tmp_var) = 0;
     TREE_STATIC (tmp_var) = 0;
     TREE_USED (tmp_var) = 1;
+
+		DECL_CONTEXT(tmp_var) = cfun->decl;
 
     return tmp_var;
 }
